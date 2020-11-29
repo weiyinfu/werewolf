@@ -1,0 +1,4 @@
+package-lock.json
+dist/
+werewolf
+node_modules/
