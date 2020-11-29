@@ -77,7 +77,7 @@ func randRoomId() string {
 
 var games sync.Map
 
-const ROOM_TIMEOUT = 5 * time.Second //房间如果两个小时没有活跃则删除之
+const ROOM_TIMEOUT = 3600 * 2 * time.Second //房间如果两个小时没有活跃则删除之
 
 func resetRoomTimer(room *RuntimeRoom) {
 	//检查房间是否过期，删除旧的定时任务，添加新的定时任务
