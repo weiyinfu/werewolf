@@ -1,9 +1,14 @@
 module.exports = {
-    publicPath:"/front/",
+    publicPath: "/Werewolf/front/",
     devServer: {
         contentBase: '.',
         proxy: {
-            "/api": {target: "http://localhost:9968/"},
+            "/Werewolf/api": {
+                target: "http://localhost:9968/",
+                pathRewrite: {
+                    "^/Werewolf": "",
+                }
+            },
         },
         host: "0.0.0.0",
         port: 9977,

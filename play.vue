@@ -3,7 +3,7 @@
         <div id="copydiv" style="width:0;height:0;"></div>
         <template v-if="game&&!noSuchRoom">
             <div class="header">第{{game.turn}}局 {{game.fetched}}/{{total}}</div>
-            <template v-if="game.manager===me">
+            <template v-if="game.manager">
                 <div class="roles">
                     <div v-for="role in roles.filter(role=>game.info[role.name])" class="role" :key="role.name">
                         <span class="role-name">{{role.chinese}}</span>
@@ -60,7 +60,6 @@
     export default {
         data() {
             return {
-                me: '',
                 game: null,
                 room: null,
                 roles: lib.roles,
@@ -69,7 +68,7 @@
         },
         computed: {
             role() {
-                let role = this.game.people[this.me]
+                let role = Object.values(this.game.people)[0];
                 return lib.roleMap[role];
             },
             total() {
@@ -77,8 +76,6 @@
             }
         },
         mounted() {
-            this.me = lib.getUser();
-            console.log(`user=${lib.getUser()}`)
             this.fetchRoom();
         },
         methods: {

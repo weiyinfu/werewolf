@@ -1,6 +1,7 @@
 import axios from "axios"
+export const appName = "/Werewolf/"
+
 function rewriteUrl(url) {
-    const appName = "/Werewolf/"
     if (url.startsWith("/api/") && location.pathname.startsWith(appName)) {
         url = `${appName}${url.slice(1)}`
     }

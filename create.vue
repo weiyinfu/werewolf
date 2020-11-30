@@ -39,8 +39,6 @@
                 game[role.name] = role.default;
             }
             this.game = game;
-            lib.getUser();
-            console.log(`I am ${lib.getUser()}`)
         },
         methods: {
             createRoom() {

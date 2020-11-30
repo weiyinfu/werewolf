@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -56,8 +57,9 @@ func getUser(ctx *gin.Context) string {
 	//从cookie中获取用户信息
 	userId, err := ctx.Cookie("userid")
 	if err != nil {
-		log.Println("发现未登录用户")
-		panic("发现未登录用户")
+		userId = randRoomId()
+		log.Println("为用户生成ID", userId, err)
+		ctx.SetCookie("userid", userId, 1<<30, "", "", false, true)
 	}
 	return userId
 }
@@ -89,7 +91,7 @@ func main() {
 	games = sync.Map{}
 	var x = gin.Default()
 	x.GET("/test", func(context *gin.Context) {
-		_, _ = context.Writer.WriteString("狼人杀发牌助手")
+		_, _ = context.Writer.WriteString(fmt.Sprintf("狼人杀发牌助手 userId=%v", getUser(context)))
 	})
 	x.POST("/api/create_room", func(context *gin.Context) {
 		room := Room{}
@@ -177,5 +179,9 @@ func main() {
 		context.JSON(http.StatusOK, r)
 	})
 	x.StaticFS("/front", http.Dir("dist/"))
-	_ = x.Run("localhost:9968")
+	ipport := "0.0.0.0:9968"
+	if os.Getenv("GIN_MODE") != "release" {
+		ipport = "localhost:9968"
+	}
+	_ = x.Run(ipport)
 }

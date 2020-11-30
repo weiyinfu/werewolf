@@ -1,31 +1,3 @@
-function setCookie(name, value) {
-    let Days = 30;
-    let exp = new Date();
-    exp.setTime(exp.getTime() + Days * 24 * 60 * 60 * 1000);
-    document.cookie = name + "=" + escape(value) + ";expires=" + exp.toGMTString();
-}
-
-//读取cookies
-function getCookie(name) {
-    let reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
-    let arr = document.cookie.match(reg)
-    if (arr) {
-        return unescape(arr[2]);
-    }
-    return null;
-}
-
-function getUser() {
-    let user = getCookie('userid');
-    if (user) {
-        return user;
-    }
-    user = Math.abs(Math.floor(Math.random() * 1e8) ^ new Date().getTime());
-    setCookie('userid', user);
-    return user;
-}
-
-
 function parseQuery() {
     let pairs = location.search.substr(1).split('&')
     let ma = {}
@@ -61,6 +33,6 @@ for (let i of roles) {
 
 export {
     roleMap,
-    roles, parseQuery,
-    getUser,
+    roles,
+    parseQuery,
 }
