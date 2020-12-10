@@ -64,12 +64,12 @@
                 room: null,
                 roles: lib.roles,
                 noSuchRoom: false,
+                space: ' ',
             }
         },
         computed: {
             role() {
-                let role = Object.values(this.game.people)[0];
-                return lib.roleMap[role];
+                return lib.roleMap[this.game.role];
             },
             total() {
                 return Object.values(this.game.info).reduce((o, n) => o + n, 0)

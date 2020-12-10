@@ -13,28 +13,24 @@ import (
 )
 
 type Room struct {
+	lock    *sync.Mutex
+	timer   *time.Timer
 	Id      string            `json:"id"`
 	Info    map[string]int    `json:"info"`
 	Manager string            `json:"manager"`
 	Turn    int               `json:"turn"`
 	People  map[string]string `json:"people"`
-	Fetched int               `json:"fetched"`
-}
-type RuntimeRoom struct {
-	lock  *sync.Mutex
-	timer *time.Timer
-	room  *Room
 }
 
-func getRole(room *RuntimeRoom) string {
+func getRole(room *Room) string {
 	//获取一个角色
 	room.lock.Lock()
 	defer func() {
 		room.lock.Unlock()
 	}()
-	info := room.room.Info
+	info := room.Info
 	had := map[string]int{}
-	for _, role := range room.room.People {
+	for _, role := range room.People {
 		had[role] += 1
 	}
 	var left []string
@@ -63,13 +59,13 @@ func getUser(ctx *gin.Context) string {
 	}
 	return userId
 }
-func getRoom(roomId string) *RuntimeRoom {
+func getRoom(roomId string) *Room {
 	//从游戏表中获取游戏房间
 	room_, ok := games.Load(roomId)
 	if !ok {
 		return nil
 	}
-	room := room_.(*RuntimeRoom)
+	room := room_.(*Room)
 	return room
 }
 func randRoomId() string {
@@ -81,12 +77,31 @@ var games sync.Map
 
 const ROOM_TIMEOUT = 3600 * 2 * time.Second //房间如果两个小时没有活跃则删除之
 
-func resetRoomTimer(room *RuntimeRoom) {
+func resetRoomTimer(room *Room) {
 	//检查房间是否过期，删除旧的定时任务，添加新的定时任务
 	if !room.timer.Reset(ROOM_TIMEOUT) {
 		log.Println("重置时钟错误")
 	}
 }
+
+func getView(room *Room, userId string) gin.H {
+	if room.Manager == userId {
+		return gin.H{
+			"fetched": len(room.People),
+			"manager": room.Manager,
+			"info":    room.Info,
+			"turn":    room.Turn,
+		}
+	} else {
+		return gin.H{
+			"fetched": len(room.People),
+			"role":    room.People[userId],
+			"info":    room.Info,
+			"turn":    room.Turn,
+		}
+	}
+}
+
 func main() {
 	games = sync.Map{}
 	var x = gin.Default()
@@ -110,18 +125,17 @@ func main() {
 		room.Manager = getUser(context)
 		room.Turn = 1
 		room.People = map[string]string{}
-		runtimeRoom := &RuntimeRoom{
-			room: &room,
-			lock: &sync.Mutex{},
-		}
-		runtimeRoom.timer = time.AfterFunc(ROOM_TIMEOUT, func() {
+		room.lock = &sync.Mutex{}
+		room.timer = time.AfterFunc(ROOM_TIMEOUT, func() {
 			log.Println("删除房间", room.Id)
 			games.Delete(room.Id)
 		})
-		games.Store(room.Id, runtimeRoom)
-		resetRoomTimer(runtimeRoom)
+		games.Store(room.Id, &room)
+		resetRoomTimer(&room)
 		log.Println("创建房间成功", room)
-		context.JSON(http.StatusOK, room)
+		context.JSON(http.StatusOK, gin.H{
+			"id": room.Id,
+		})
 	})
 	x.GET("/api/newgame", func(context *gin.Context) {
 		userId := getUser(context)
@@ -129,7 +143,7 @@ func main() {
 		log.Println("new game for room", roomId)
 		room := getRoom(roomId)
 		resetRoomTimer(room)
-		if room.room.Manager != userId {
+		if room.Manager != userId {
 			context.JSON(http.StatusForbidden, map[string]string{
 				"info": "只有管理员才能开始新游戏",
 			})
@@ -139,10 +153,9 @@ func main() {
 		defer func() {
 			room.lock.Unlock()
 		}()
-		room.room.Turn += 1
-		room.room.People = map[string]string{}
-		room.room.Fetched = 0
-		context.JSON(http.StatusOK, room.room)
+		room.Turn += 1
+		room.People = map[string]string{}
+		context.JSON(http.StatusOK, getView(room, userId))
 	})
 	x.GET("/api/fetch", func(context *gin.Context) {
 		roomId := context.Query("room")
@@ -155,28 +168,14 @@ func main() {
 		}
 		resetRoomTimer(room)
 		userId := getUser(context)
-		if userId == room.room.Manager {
-			r := *room.room
-			fmt.Println(r.Info)
-			fmt.Println(room.room.Info)
-			r.People = map[string]string{}
-			ind := 1
-			for _, role := range room.room.People {
-				r.People[fmt.Sprint(ind)] = role
-			}
-			context.JSON(http.StatusOK, r)
+		if userId == room.Manager {
+			context.JSON(http.StatusOK, getView(room, userId))
 			return
 		}
-		if _, ok := room.room.People[userId]; !ok {
-			room.room.People[userId] = getRole(room)
-			room.room.Fetched += 1
+		if _, ok := room.People[userId]; !ok {
+			room.People[userId] = getRole(room)
 		}
-		r := *room.room
-		r.People = map[string]string{
-			userId: room.room.People[userId],
-		}
-		r.Manager = "" //不能让普通用户看到房主的信息
-		context.JSON(http.StatusOK, r)
+		context.JSON(http.StatusOK, getView(room, userId))
 	})
 	x.StaticFS("/front", http.Dir("dist/"))
 	ipport := "0.0.0.0:9968"
